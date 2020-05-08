@@ -1,0 +1,44 @@
+version: "2"
+networks:
+  express-app:
+    driver: bridge
+services:
+  redis_primary:
+    container_name: redis_primary
+    build: ./redis_base
+    image: redis_base/1.0.0
+    command: redis-server --protected-mode no --logfile /var/log/redis/redis-server.log
+    networks:
+      - express-app
+  redis-replica-one:
+    container_name: redis-replica-one
+    image: redis_base/1.0.0
+    command: redis-server --protected-mode no --logfile /var/log/redis/redis-replica.log --slaveof redis_primary 6379
+    networks:
+      - express-app
+  redis-replica-two:
+    container_name: redis-replica-two
+    image: redis_base/1.0.0
+    command: redis-server --protected-mode no --logfile /var/log/redis/redis-replica.log --slaveof redis_primary 6379
+    networks:
+      - express-app
+  nodejs:
+    container_name: nodejs
+    build: ./nodejs
+    ports:
+      - "3000:3000"
+    networks:
+      - express-app
+    volumes_from:
+      - redis_primary
+  logstash:
+    container_name: logstash
+    build: ./logstash
+    image: logstash/1.0.0
+    volumes_from:
+      - redis_primary
+      - nodejs
+    networks:
+      - express-app
+    command: -f logstash.conf --config.reload.automatic
+
